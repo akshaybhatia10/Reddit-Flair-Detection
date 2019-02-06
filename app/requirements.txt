@@ -1,0 +1,5 @@
+gunicorn
+Flask
+Flask-Cors
+numpy
+requests
