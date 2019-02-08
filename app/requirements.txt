@@ -3,3 +3,5 @@ Flask
 Flask-Cors
 numpy
 requests
+torch
+pytorch-pretrained-bert

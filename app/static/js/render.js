@@ -1,21 +1,3 @@
-function makeList(comments) {
-    var listContainer = document.createElement("div");
-    listContainer.id = "comm";
-    document.getElementsByTagName("ul")[2].appendChild(listContainer);
-    var listElement = document.createElement("ul");
-    listContainer.appendChild(listElement);
-    
-    var numberOfListItems = comments.length;
-    if (numberOfListItems > 10){
-      numberOfListItems = 10;
-    }
-    for (var i = 0; i < numberOfListItems; ++i) {
-        var listItem = document.createElement("li");
-        listItem.innerHTML =comments[i];
-        listElement.appendChild(listItem);
-    }
-}
-
 function again(){
 	var url = document.getElementById('url');
 
@@ -27,7 +9,18 @@ function again(){
     if (request.readyState == 4 && request.status == 200)
         var data = JSON.parse(request.responseText);
         var comments = [];
-
+      
+        if (data == 'Invalid Input'){
+        document.getElementById('post').innerHTML = 'Please give a valid url';
+        document.getElementById('author').innerHTML = '';
+        document.getElementById('para').innerHTML = '';
+        document.getElementById('date').innerHTML = '';
+        document.getElementById('num_comm').innerHTML = '';
+        document.getElementById('score').innerHTML = '';
+        document.getElementById('flair').innerHTML = '';
+        document.getElementById('label').innerHTML = '';
+        }
+        else{
         var title = data['title'];
         var self_text = data['selftext']
         var author = data['author']
@@ -37,6 +30,7 @@ function again(){
         var num_comments = data['num_comments']
         var score = data['score']
         var img_src = data['image_src']
+        var label = data['label']
 
     	  document.getElementById('post').innerHTML = title;
         document.getElementById('author').innerHTML = 'By: ' + author;
@@ -45,32 +39,27 @@ function again(){
         document.getElementById('num_comm').innerHTML = 'Total comments: '+ num_comments;
         document.getElementById('score').innerHTML = 'Score: ' + score;
         document.getElementById('flair').innerHTML = 'True flair: ' + flair;
+        document.getElementById('label').innerHTML = 'Predicted flair: ' + label;
         
-        
-        makeList(comments)
-        console.log(img_src.includes('.com'))
-        if (img_src.includes('.com')){
-            var listContainer = document.createElement("div");
-            listContainer.id = "l";
-            document.getElementsByTagName("a")[3].appendChild(listContainer);
-            var listElement = document.createElement("a");
-            var linkText = document.createTextNode("Source Link");
-            listElement .appendChild(linkText);
-            listElement.title = "Source Link"
-            listElement.href = img_src;
-            listContainer.appendChild(listElement);
-            }
-        else{
-          var listContainer = document.createElement("div");
-          listContainer.id = "i";
-          document.getElementsByTagName("a")[3].appendChild(listContainer);
-          var listElement = document.createElement("img");
-          listElement.height = "500";
-          listElement.width = "500";
-          listElement .src = 'https://i.redd.it/' + img_src + '.jpg'
-          listContainer.appendChild(listElement);
-        }
-        
+        document.getElementById('l1').innerHTML = comments[0];
+        document.getElementById('l2').innerHTML = comments[1];
+        document.getElementById('l3').innerHTML = comments[2];
+        document.getElementById('l4').innerHTML = comments[3];
+        document.getElementById('l5').innerHTML = comments[4];
+        document.getElementById('l6').innerHTML = comments[5];
+        document.getElementById('l7').innerHTML = comments[6];
+        document.getElementById('l8').innerHTML = comments[7];
+        document.getElementById('l9').innerHTML = comments[8];
+        document.getElementById('l10').innerHTML = comments[9];
+
+        if (img_src){
+        var x = document.getElementById('i');
+        x.height = "500";
+        x.width = "500";
+        x.src = 'https://i.redd.it/' + img_src[0] + '.' + img_src[1];
+      }
+
+      }
     };
     const endpoint = '/render'
     request.open("POST", endpoint, true); 
