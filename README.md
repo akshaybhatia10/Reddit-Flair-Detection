@@ -1,7 +1,5 @@
 # Reddit-Flair-Detection
 
-This repo illustrates the task of data aquisition of reddit posts from the [/india](https://www.reddit.com/r/india/) subreddit, classification of the posts into 11 different flairs and deploying the best model as a web service.
-
 ## Table of Contents
 
 0. [About](#about)
@@ -18,18 +16,18 @@ This repo illustrates the task of data aquisition of reddit posts from the [/ind
  
 ## Installation
 
-NOTE: In case the installation does work as expected, move to [Build on Google Colab](#colab) to try the project without installing locally. All results can be replicated on google colab easily.
+NOTE: In case the installation does work as expected, move to [Build on Google Colab](#build-on-google-colab) to try the project without installing locally. All results can be replicated on google colab easily.
 
-The following installation has been tested on MacOSX 10.13.6 and Ubuntu 16.04. (This project requires Python 3.6 and Conda which is an open source package management system and environment management system that runs on Windows, macOS and Linux. Before starting, make sure both are installed or follow the instructions below.)
+The following installation has been tested on MacOSX 10.13.6 and Ubuntu 16.04.
 
-This project requires **Python 3** and the following Python libraries installed:
+This project requires **Python 3** and the following Python libraries installed(plus a few other s depending on task):
 
 - [sklearn](http://scikit-learn.com/)
 - [Pytorch](http://pytorch.org/)
 - [pandas](pandas.pydata.org/)
 - [Numpy](http://numpy.org/)
-- [Scipy](http://scipy.org/)
 - [Matplotlib](https://matplotlib.org/) 
+- [Torchtext](https://torchtext.readthedocs.io/en/latest/data.html)
 
 1. Clone the repo
 
@@ -38,25 +36,26 @@ git clone https://github.com/akshaybhatia10/Reddit-Flair-Detection/-.git
 cd Reddit-Flair-Detection/
 ```
 
-2. 
+2. Run
 ```bash
 pip install -r requirements
 ```
 
 ## Data Aquisition
 
-**Note: The notebook requires a GCP account, a reddit account and CloudSDK installed. If you want to use the dataset to get started with running the models, download the datasets using:
+**Note: The notebook requires a GCP account, a reddit account and CloudSDK installed. If you want to use the dataset to get started with running the models instead building the dataset yourself, download the datasets using:
 
+To download the datasets from s3
 ```bash
-wget 
-wget 
+wget --no-check-certificate --no-proxy "https://s3.amazonaws.com/redditdata2/train.json"
+wget --no-check-certificate --no-proxy "https://s3.amazonaws.com/redditdata2/test.json"
 ```
 
 We will reference the publically available Reddit dump to [here](https://www.reddit.com/r/datasets/comments/3bxlg7/i_have_every_publicly_available_reddit_comment/). The dataset is publically available on Google BigQuery and is divided across months from December 2015 - October 2018. BigQuery allows us to perform low latency queries on massive datasets. One example is [this](https://bigquery.cloud.google.com/table/fh-bigquery:reddit_posts.2018_08). Unfortunately the posts have not been tagged with their comments. To extract this information, in addition to BigQuery, we will use [PRAW](https://praw.readthedocs.io/en/latest/) for this task. 
 
 The idea is to randomly query a subset of posts from December 2015 - October 2018. Then for each of the post, use praw to get comments for each one. To build a balanced dataset, we will limit the number of samples for each flair at 2000 and randomly sample from the extracted dataset. 
 
-To get started, follow [here](). (**Note: The notebook requires a GCP account, a reddit account and CloudSDK installed.)
+To get started, follow [here](https://github.com/akshaybhatia10/Reddit-Flair-Detection/blob/master/notebooks/data_aquisition.ipynb). (**Note: The notebook requires a GCP account, a reddit account and CloudSDK installed.)
 
 
 | Description | Size  | Samples  |
@@ -83,42 +82,58 @@ We are considering 11 flairs. The number of samples per set is:
 
 ## Flair Classification
 
-#### 1. Data Exploration and Baseline Implementations
+#### 1. [Data Exploration and Baseline Implementations](https://github.com/akshaybhatia10/Reddit-Flair-Detection/blob/master/notebooks/Data_Analysis_and_Baseline_Models.ipynb)
 
 In this example, we perform a basic exploration of all features. We then run a simple XGBoost model over some meta features. This is followed by running 3 simple baseline algorithms using TFIDF as features.
 
-#### 2. Simple GRU/LSTM, GRU with Concat Pooling and GRU/LSTM with Self Attention
+#### 2. [Simple GRU/LSTM, GRU with Concat Pooling and GRU/LSTM with Self Attention](https://github.com/akshaybhatia10/Reddit-Flair-Detection/blob/master/notebooks/RNN_LSTM.ipynb)
 
-Here we use pretrained glove embeddings for all the models (without fine tuning)
+In this section, we implement various rnn based architectures on the reddit post title concatenated with the post body feature. Also, each model uses the pretrained glove embeddings as inputs to the model.(without fine tuning)
     
 ###### a) Simple GRU/LSTM
 ![GRU Cell](https://cdn-images-1.medium.com/max/1600/0*7CvKTm5BHkjV_jrt.png)
 
+This model consists of a single layer vanilla gru with a softmax classifier.
+
+
 ###### b) GRU with Concat Pooling
 ![Concat Pooling](https://cdn-images-1.medium.com/max/1400/1*qJggHpIPUkkzG0KQZ-EUcQ.jpeg)
 
+Here we implement concat pooling with a gru. (See notebook for more details.)
+
 ###### c) GRU/LSTM with Self Attention
-[Self Attention](https://camo.githubusercontent.com/c2fb353e0d05d634ea93e0cb0f6dd2ccd226af04/687474703a2f2f7777772e77696c646d6c2e636f6d2f77702d636f6e74656e742f75706c6f6164732f323031352f31322f53637265656e2d53686f742d323031352d31322d33302d61742d312e31362e30382d504d2e706e67)
+![Self Attention](https://camo.githubusercontent.com/c2fb353e0d05d634ea93e0cb0f6dd2ccd226af04/687474703a2f2f7777772e77696c646d6c2e636f6d2f77702d636f6e74656e742f75706c6f6164732f323031352f31322f53637265656e2d53686f742d323031352d31322d33302d61742d312e31362e30382d504d2e706e67)
 
-#### 3. Classification using BERT
+This model uses a RNN encoder conditioned with a scaled dot product self attention layer with a softmax classifier
 
-In this notebook, we use the pretrained language model BERT for the flair classification. BERT fine-tuning requires only a few new parameters added. For our purpose, we get the prediction by taking the final hidden state of the special first token [CLS], and multiplying it with a small weight matrix, and then applying softmax .Specifically, we use the uncased 12 head, 768 hidden model.
+#### 3. [Classification using BERT](https://github.com/akshaybhatia10/Reddit-Flair-Detection/blob/master/notebooks/BERT.ipynb)
+![BERT](https://gluon-nlp.mxnet.io/_images/bert-sentence-pair.png)
+
+NOTE: Most of the code in this notebook is referenced from the pytorch implementation of BERT in [this](https://github.com/huggingface/pytorch-pretrained-BERT) repo.
+
+In this notebook, we use the pretrained language model BERT for the flair classification. BERT fine-tuning requires only a few new parameters added. For our purpose, we get the prediction by taking the final hidden state of the special first token [CLS], and multiplying it with a small weight matrix, and then applying softmax .Specifically, we use the uncased 12 head, 768 hidden model. The BERT model gives and best performance and is used in the deployed web app. Download the trained model using:
+
+```bash
+wget --no-check-certificate --no-proxy "https://s3.amazonaws.com/redditdata2/pytorch_model.bin"
+```
 
 ### Results
 
+The results of different models on test set:
+
 | Model | Accuracy             |       |
-| ---   | ---                  | ---  |  
-| Logistic Regression          |      |
-| MultinomialNB                |      |
-| SGD                          |      |
-| Single Layer Simple GRU/LSTM |      |
-| GRU with Concat Pooling      |      |
-| GRU/LSTM with Self Attention |      |
-| BERT                         | 67.5 |
+| ---   | ---                  | ---   |  
+| Logistic Regression          | 55.45 |
+| MultinomialNB                | 54.70 |
+| SGD                          | 56.30 |
+| Single Layer Simple GRU/LSTM | 59.36 |
+| GRU with Concat Pooling      | 61.62 |
+| Bi-GRU with Self Attention    | 54.36 |
+| BERT                         | 67.1  |
 
 ## Deploying as a Web Service
 
-The best model BERT is deployed as a web app. Check the live demo [here](https://reddit-flair.herokuapp.com)
+The best model - BERT is deployed as a web app. Check the live demo [here](http://104.196.19.204/). Due to the large model size, the app was deployed using Google Compute Engine platform rather a free service like heroku(due to its limited slug size). All the required files can be found [here](https://github.com/akshaybhatia10/Reddit-Flair-Detection/tree/master/app)
 
 ## Build on Google Colab
 
@@ -126,10 +141,11 @@ Google Colab lets us build the project without installing it locally. Installati
 
 To get started, open the notebooks in playground mode and run the cells(You must be logged in with your google account and provide additional authorization). Also since mongoDB cannot be run in a Colab environment, the data aquisition notebook cannot run in Google Colab.
 
-1. [Data Exploration and Baseline Implementations]()
-2. [Simple GRU/LSTM, GRU with Concat Pooling and GRU/LSTM with Self Attention]()
-3. [Classification using BERT]()
+1. [Data Exploration and Baseline Implementations](https://colab.research.google.com/drive/1N4nZozJg7SO_qLZ7-kpkp2JIl5IsSDqf)
+2. [Simple GRU/LSTM, GRU with Concat Pooling and GRU/LSTM with Self Attention](https://colab.research.google.com/drive/1gLwrx5a1j_QdnmRBUnd5JiEnFh2MndBp)
+3. [Classification using BERT](https://colab.research.google.com/drive/1msACJKPhXDdNsbAS2FhRIIlKOtyGdPKf)
 
 ## References 
 
 - Jeremy Howard, Sebastian Ruder. [ULMFIT](https://arxiv.org/pdf/1801.06146.pdf)
+- Pytorch Implementation of BERT - [HuggingFace Github repo](https://github.com/huggingface/pytorch-pretrained-BERT)
