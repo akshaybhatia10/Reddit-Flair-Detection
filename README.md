@@ -135,6 +135,12 @@ The results of different models on test set:
 
 The best model - BERT is deployed as a web app. Check the live demo [here](http://104.196.19.204/). Due to the large model size, the app was deployed using Google Compute Engine platform rather a free service like heroku(due to its limited slug size). All the required files can be found [here](https://github.com/akshaybhatia10/Reddit-Flair-Detection/tree/master/app)
 
+### Webapp demo
+
+ 1                         |                      2    |
+:-------------------------:|:-------------------------:|
+![](app/1.png?raw=True) |![](app/2.png?raw=true) |
+
 ## Build on Google Colab
 
 Google Colab lets us build the project without installing it locally. Installation of some libraries may take some time depending on your internet connection.
