@@ -53,9 +53,35 @@ wget --no-check-certificate --no-proxy "https://s3.amazonaws.com/redditdata2/tes
 
 We will reference the publically available Reddit dump to [here](https://www.reddit.com/r/datasets/comments/3bxlg7/i_have_every_publicly_available_reddit_comment/). The dataset is publically available on Google BigQuery and is divided across months from December 2015 - October 2018. BigQuery allows us to perform low latency queries on massive datasets. One example is [this](https://bigquery.cloud.google.com/table/fh-bigquery:reddit_posts.2018_08). Unfortunately the posts have not been tagged with their comments. To extract this information, in addition to BigQuery, we will use [PRAW](https://praw.readthedocs.io/en/latest/) for this task. 
 
-The idea is to randomly query a subset of posts from December 2015 - October 2018. Then for each of the post, use praw to get comments for each one. To build a balanced dataset, we will limit the number of samples for each flair at 2000 and randomly sample from the extracted dataset. 
+The idea is to randomly query a subset of posts from December 2015 - October 2018. Then for each of the post, use praw to get comments for each one. To build a balanced dataset, we will limit the number of samples for each flair at 2000 and further randomly sample from the queried records. 
 
-To get started, follow [here](https://github.com/akshaybhatia10/Reddit-Flair-Detection/blob/master/notebooks/data_aquisition.ipynb). (**Note: The notebook requires a GCP account, a reddit account and CloudSDK installed.)
+To get started, follow [here](https://github.com/akshaybhatia10/Reddit-Flair-Detection/blob/master/notebooks/data_aquisition.ipynb). (**Note: The notebook requires a GCP account, a reddit account and CloudSDK installed.)**
+
+
+| Feature Name       | Type            | Description                           |
+| ---                | ---             | ---                                   | 
+| author             | STR             | author name                           |
+| comments           | LIST            | list of top comments(LIMIT 10)        |
+| created_utc        | INT             | timestamp of post                     |
+| link_flair_text    | STR             | flair of the post                     |
+| num_comments       | INT             | number of comments on the post        |
+| score              | INT             | score of the post (upvotes-downvotes) |
+| over_18            | BOOL            | whether post is age restricted or not |
+| selftext           | STR             | description of the post               |
+| title              | STR             | title of the post                     |
+| url                | STR             | url associated with the post          |
+
+This stores the queried records in a mongoDB database 'dataset' within the collection 'reddit_data'. To export the mongoDB colection to json, run:
+
+```bash
+mongoexport --db dataset -c reddit_dataset --out ./reddit_data.json
+```
+
+To import this json to your system, run:
+
+```bash
+mongoimport --db dataset --collection reddit_dataset --file ./reddit_data.json
+```
 
 
 | Description | Size  | Samples  |
@@ -65,12 +91,12 @@ To get started, follow [here](https://github.com/akshaybhatia10/Reddit-Flair-Det
 
 We are considering 11 flairs. The number of samples per set is:
 
-| Label | Flair              | Train Samples  | Test Samples |
-| ---   | ---                | ---            | ---          | 
+| Label | Flair              | Train Samples  | Test Samples  |
+| ---   | ---                | ---            | ---           | 
 | 1.    | AskIndia           | 1523            | 477          |
 | 2.    | Politics           | 1587            | 413          |
 | 3.    | Sports             | 1719            | 281          |
-| 4.    | Food | 1656        | 344             | 1312         |
+| 4.    | Food               | 1656            | 344          |
 | 5.    | [R]eddiquette      | 1604            | 396          |
 | 6.    | Non-Political      | 1586            | 414          |
 | 7.    | Scheduled          | 1596            | 372          |
@@ -82,36 +108,53 @@ We are considering 11 flairs. The number of samples per set is:
 
 ## Flair Classification
 
+**Note: The notebooks download the training and test set automatically.**
+
+This section describes different models implemeted for the task of flair classification. We ideally want to classify the post as soon as it is created so we mostly use the title and body of the post as inputs to the models. 
+
 #### 1. [Data Exploration and Baseline Implementations](https://github.com/akshaybhatia10/Reddit-Flair-Detection/blob/master/notebooks/Data_Analysis_and_Baseline_Models.ipynb)
 
-In this example, we perform a basic exploration of all features. We then run a simple XGBoost model over some meta features. This is followed by running 3 simple baseline algorithms using TFIDF as features.
+In this example, we perform a basic exploration of all features. We then run a simple XGBoost model over some meta features. This is followed by running 3 simple baseline algorithms using TFIDF on title and post as features.
 
 #### 2. [Simple GRU/LSTM, GRU with Concat Pooling and GRU/LSTM with Self Attention](https://github.com/akshaybhatia10/Reddit-Flair-Detection/blob/master/notebooks/RNN_LSTM.ipynb)
 
-In this section, we implement various rnn based architectures on the reddit post title concatenated with the post body feature. Also, each model uses the pretrained glove embeddings as inputs to the model.(without fine tuning)
+In this section, we implement various RNN based architectures on the reddit post title concatenated with the post body feature. Also, each model uses the pretrained glove embeddings as inputs to the model.(without fine tuning)
     
 ###### a) Simple GRU/LSTM
-![GRU Cell](https://cdn-images-1.medium.com/max/1600/0*7CvKTm5BHkjV_jrt.png)
 
-This model consists of a single layer vanilla gru with a softmax classifier.
+This model consists of a single layer vanilla GRU with a softmax classifier.
 
+<p align="center">
+  <img width="460" height="400" src="https://cdn-images-1.medium.com/max/1600/0*7CvKTm5BHkjV_jrt.png">
+</p>
 
 ###### b) GRU with Concat Pooling
-![Concat Pooling](https://cdn-images-1.medium.com/max/1400/1*qJggHpIPUkkzG0KQZ-EUcQ.jpeg)
 
-Here we implement concat pooling with a gru. (See notebook for more details.)
+Here we implement concat pooling with a GRU. (See notebook for more details.)
+
+<p align="center">
+  <img width="460" height="400" src="https://cdn-images-1.medium.com/max/1400/1*qJggHpIPUkkzG0KQZ-EUcQ.jpeg">
+</p>
 
 ###### c) GRU/LSTM with Self Attention
-![Self Attention](https://camo.githubusercontent.com/c2fb353e0d05d634ea93e0cb0f6dd2ccd226af04/687474703a2f2f7777772e77696c646d6c2e636f6d2f77702d636f6e74656e742f75706c6f6164732f323031352f31322f53637265656e2d53686f742d323031352d31322d33302d61742d312e31362e30382d504d2e706e67)
 
-This model uses a RNN encoder conditioned with a scaled dot product self attention layer with a softmax classifier
+This model uses a RNN encoder conditioned with a scaled dot product self attention layer with a softmax classifier.
+
+<p align="center">
+  <img width="460" height="400" src="https://camo.githubusercontent.com/c2fb353e0d05d634ea93e0cb0f6dd2ccd226af04/687474703a2f2f7777772e77696c646d6c2e636f6d2f77702d636f6e74656e742f75706c6f6164732f323031352f31322f53637265656e2d53686f742d323031352d31322d33302d61742d312e31362e30382d504d2e706e67">
+</p>
 
 #### 3. [Classification using BERT](https://github.com/akshaybhatia10/Reddit-Flair-Detection/blob/master/notebooks/BERT.ipynb)
-![BERT](https://gluon-nlp.mxnet.io/_images/bert-sentence-pair.png)
 
 NOTE: Most of the code in this notebook is referenced from the pytorch implementation of BERT in [this](https://github.com/huggingface/pytorch-pretrained-BERT) repo.
 
-In this notebook, we use the pretrained language model BERT for the flair classification. BERT fine-tuning requires only a few new parameters added. For our purpose, we get the prediction by taking the final hidden state of the special first token [CLS], and multiplying it with a small weight matrix, and then applying softmax .Specifically, we use the uncased 12 head, 768 hidden model. The BERT model gives and best performance and is used in the deployed web app. Download the trained model using:
+In this notebook, we use the pretrained language model BERT for the flair classification. BERT fine-tuning requires only a few new parameters added. For our purpose, we get the prediction by taking the final hidden state of the special first token [CLS], and multiplying it with a small weight matrix, and then applying softmax .Specifically, we use the uncased 12 head, 768 hidden model.
+
+<p align="center">
+  <img width="460" height="400" src="https://gluon-nlp.mxnet.io/_images/bert-sentence-pair.png">
+</p>
+
+The BERT model gives and best performance and is used in the deployed web app. Download the trained model using:
 
 ```bash
 wget --no-check-certificate --no-proxy "https://s3.amazonaws.com/redditdata2/pytorch_model.bin"
@@ -153,5 +196,9 @@ To get started, open the notebooks in playground mode and run the cells(You must
 
 ## References 
 
-- Jeremy Howard, Sebastian Ruder. [ULMFIT](https://arxiv.org/pdf/1801.06146.pdf)
+- [Cho et. al. Learning Phrase Representations using RNN Encoder-Decoder for Statistical Machine Translation. 2014](https://arxiv.org/pdf/1406.1078.pdf)
+- [Devlin et. al. BERT: Pre-training of Deep Bidirectional Transformers for
+Language Understanding. 2018 ](https://arxiv.org/pdf/1810.04805)
+- [Jeremy Howard, Sebastian Ruder. ULMFIT. 2018](https://arxiv.org/pdf/1801.06146.pdf)
+- [ Vasvani et. al. Attention is all you need. Nips 2017](https://arxiv.org/pdf/1706.03762)
 - Pytorch Implementation of BERT - [HuggingFace Github repo](https://github.com/huggingface/pytorch-pretrained-BERT)
